@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>YouTube案作成表</title>
+<style>
+:root{--bg:#f6f4fb;--card:#fff;--tx:#241f33;--mu:#7a738f;--ac:#ff4d6d;--ac2:#7c5cff;--bd:#e4e0ef;--in:#faf9fd;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17141f;--card:#221e2e;--tx:#efeaff;--mu:#9c94b5;--bd:#363048;--in:#1b1826}}
+:root[data-theme="dark"]{--bg:#17141f;--card:#221e2e;--tx:#efeaff;--mu:#9c94b5;--bd:#363048;--in:#1b1826}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.5 "Hiragino Sans","Noto Sans JP",system-ui,sans-serif}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--card);border-bottom:1px solid var(--bd);display:flex;gap:6px;align-items:center;padding:8px 12px;flex-wrap:wrap}
+header h1{font-size:16px;margin:0 8px 0 0}
+.tab{border:0;background:none;color:var(--mu);padding:8px 14px;border-radius:999px;font:inherit;font-weight:700;cursor:pointer}
+.tab.on{background:var(--ac);color:#fff}
+main{padding:14px;max-width:1500px;margin:auto}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px}
+.c b{display:block;font-size:22px}.c span{color:var(--mu);font-size:12px}
+.bar{height:6px;background:var(--bd);border-radius:9px;margin-top:6px;overflow:hidden}.bar i{display:block;height:100%;background:var(--ac2)}
+.wrap{overflow-x:auto;background:var(--card);border:1px solid var(--bd);border-radius:14px}
+table{border-collapse:collapse;table-layout:fixed}
+th,td{border-bottom:1px solid var(--bd);padding:4px;vertical-align:top;position:relative}
+th{font-size:12px;color:var(--mu);text-align:left;background:var(--card);position:sticky;top:0;padding:8px 6px;white-space:nowrap}
+.rz{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:col-resize;touch-action:none}.rz:hover{background:var(--ac2);opacity:.4}
+input,select,textarea{width:100%;font:inherit;color:var(--tx);background:var(--in);border:1px solid var(--bd);border-radius:8px;padding:6px 8px}
+textarea{resize:vertical;min-height:34px}
+button.b{border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:9px;padding:6px 10px;font:inherit;cursor:pointer}
+button.p{background:var(--ac);color:#fff;border-color:var(--ac);font-weight:700}
+button.b:hover{filter:brightness(.95)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.idea{cursor:pointer}.idea h3{margin:0 0 4px;font-size:14px}.tag{display:inline-block;background:var(--in);border:1px solid var(--bd);border-radius:99px;padding:0 8px;font-size:11px;color:var(--mu);margin-right:4px}
+#panel{position:fixed;top:0;right:0;bottom:0;width:var(--pw,50vw);min-width:320px;max-width:100vw;background:var(--bg);border-left:2px solid var(--ac2);z-index:20;display:none;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-shadow:-8px 0 30px #0003}
+#panel.open{display:flex}
+#split{position:absolute;left:-7px;top:0;bottom:0;width:12px;cursor:col-resize;touch-action:none}
+.ph{display:flex;gap:6px;padding:10px;align-items:center;border-bottom:1px solid var(--bd);background:var(--card)}
+.pb{flex:1;overflow:auto;padding:10px}
+.drag{cursor:grab;color:var(--mu);text-align:center;user-select:none}
+tr.over{outline:2px dashed var(--ac2)}
+.sp{font-weight:700}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
+.two label{font-size:12px;color:var(--mu)}
+@media (max-width:800px){#panel{width:100vw!important}main{padding:10px}th,td{font-size:13px}}
+@media (min-aspect-ratio:7/5) and (max-aspect-ratio:8/5) and (min-width:801px){body{font-size:13px}main{padding:10px}.cards{grid-template-columns:repeat(6,1fr)}.c b{font-size:19px}}
+</style></head><body>
+<header><h1>🎬 YouTube案作成表</h1>
+<button class="tab" data-t="an">アナリティクス</button><button class="tab" data-t="id">動画作成案</button><button class="tab" data-t="nt">テンプレ・Xネタ・メモ</button></header>
+<main id="main"></main>
+<aside id="panel"><div id="split" title="ドラッグで幅調整"></div><div class="ph" id="ph"></div><div class="pb" id="pb"></div></aside>
+<script>
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,9);
+function seed(){const L=(sp,text,note='',fx='',img='',bgm='')=>({id:uid(),sp,text,note,fx,img,bgm});
+return{subs:1,goal:5,ui:{tab:'an',it:'new',w:{},pw:null,pt:'s'},
+videos:['『ミニマリストになりたい！』弱小会社員の部屋紹介【ゆっくり】','『中二病でも恋がしたい！』末期患者の症状とリアルな妄想紹介【VOICEVOX】','『百合を語ろう！』おすすめ作品&カップリング5選【VOICEVOX】','『海外旅行に行きたい！』おすすめグッズと旅行先での心得【VOICEBOX】','『スシ食いねェ!』寿司ガキを読んで寿司を喰らう【VOICEBOX】'].map((t,i)=>({id:uid(),title:t,genre:['紹介','思想','紹介','紹介','Vlog'][i],date:'',views:0,likes:0,mins:0,rev:0,monet:false})),
+ideas:[{id:uid(),title:'夏を取り戻せ！1人でもできる僕らの大人夏休み！',genre:'Vlog',voice:'ゆっくり',arch:false,kosei:'',todo:'',gaiyo:'',lines:[L('効果','--セミの鳴き声--'),L('魔理沙','、、、暑い、暑すぎる。'),L('霊夢','どうしたの魔理沙。'),L('魔理沙','最近の夏暑すぎやしないか、？','','ツッコミ')]},
+{id:uid(),title:'『深夜の高速道路ってわくわくする！』真夜中シリーズ #1',genre:'紹介',voice:'VOICEVOX',arch:false,kosei:'',todo:'',gaiyo:'',lines:[]}],
+notes:{d:[{id:uid(),t:'基本テンプレ',b:'今回は〇〇を紹介します。\n\n▼目次\n0:00 オープニング\n\n▼使用素材\nVOICEVOX:ずんだもん\n\n#ゆっくり #紹介'}],x:[{id:uid(),t:'真夜中ネタ',b:'『真夜中のドン・キホーテってテーマパークだよね！』'}],m:[{id:uid(),t:'メモ',b:''}]}}}
+let S;try{S=JSON.parse(localStorage.getItem('ytp'))}catch(e){}if(!S||!S.ui)S=seed();S.ui.cur=null;S.ui.w=S.ui.w||{};if((S.ui.w.an||[]).length!==11)delete S.ui.w.an;
+const save=()=>{try{localStorage.setItem('ytp',JSON.stringify(S))}catch(e){}};
+const cur=()=>S.ideas.find(i=>i.id===S.ui.cur);
+const DEF={an:[40,300,90,170,110,90,80,100,100,70,40],ln:[34,100,300,160,110,110,110,92]};
+function cols(k){const w=S.ui.w[k]||(S.ui.w[k]=DEF[k].slice());return`<colgroup>${w.map(x=>`<col style="width:${x}px">`).join('')}</colgroup>`}
+const tw=k=>S.ui.w[k].reduce((a,b)=>a+b,0);
+const th=(k,i,l)=>`<th>${l}<i class="rz" data-k="${k}" data-i="${i}"></i></th>`;
+const fmt=n=>(+n||0).toLocaleString();
+function mainAn(){const v=S.videos,s=k=>v.reduce((a,x)=>a+(+x[k]||0),0);
+const H=['','題名','ジャンル','動画URL/ID','投稿日','再生回数','いいね','再生時間(分)','収益(円)','収益化',''];
+return`<div class="cards"><div class="c"><span>総再生回数</span><b>${fmt(s('views'))}</b></div><div class="c"><span>総いいね</span><b>${fmt(s('likes'))}</b></div><div class="c"><span>総再生時間(時間)</span><b>${(s('mins')/60).toFixed(1)}</b></div><div class="c"><span>総収益(円)</span><b>${fmt(s('rev'))}</b></div><div class="c"><span>現在登録者 / 目標</span><b><input data-b="root|subs" type="number" style="width:70px"> / <input data-b="root|goal" type="number" style="width:70px"></b><div class="bar"><i style="width:${Math.min(100,S.subs/(S.goal||1)*100)}%"></i></div></div></div>
+<div class="row"><button class="b p" data-a="addv">＋ 動画を追加</button><input data-b="root|key" value="${esc(S.key||'')}" placeholder="YouTube APIキー" style="width:190px"><button class="b" data-a="fetch">▶ 再生数・いいねを取得</button><label class="b">📥 CSV取り込み<input type="file" accept=".csv" id="csv" hidden></label><span id="st" style="color:var(--mu)"></span></div><div class="row" style="color:var(--mu);font-size:12px">見出しの右端をドラッグで列幅を調整 / 再生時間・収益はYouTube StudioのCSVを取り込み</div>
+<div class="wrap"><table style="width:${tw('an')}px" id="t-an">${cols('an')}<thead><tr>${H.map((h,i)=>th('an',i,h)).join('')}</tr></thead><tbody>${v.map((x,n)=>`<tr><td>${n+1}</td><td><textarea rows="2" data-b="videos|${x.id}|title">${esc(x.title)}</textarea></td><td><input data-b="videos|${x.id}|genre" value="${esc(x.genre)}"></td><td><input data-b="videos|${x.id}|url" value="${esc(x.url||'')}" placeholder="URLまたは動画ID">${vid(x.url)?`<a href="https://studio.youtube.com/video/${vid(x.url)}/analytics" target="_blank" rel="noopener">Studioで開く</a>`:''}</td><td><input type="date" data-b="videos|${x.id}|date" value="${x.date}"></td>${['views','likes','mins','rev'].map(k=>`<td><input type="number" data-b="videos|${x.id}|${k}" value="${x[k]}"></td>`).join('')}<td><input type="checkbox" style="width:auto" data-b="videos|${x.id}|monet" ${x.monet?'checked':''}></td><td><button class="b" data-a="delv" data-id="${x.id}">🗑</button></td></tr>`).join('')}</tbody></table></div>`}
+function mainId(){const a=S.ui.it==='arch',L=S.ideas.filter(i=>!!i.arch===a);
+return`<div class="row"><button class="tab ${a?'':'on'}" data-a="it" data-v="new">新規作成</button><button class="tab ${a?'on':''}" data-a="it" data-v="arch">アーカイブ</button>${a?'':'<button class="b p" data-a="addi">＋ 新しい動画案</button>'}</div>
+<div class="grid">${L.map(i=>`<div class="c idea" data-a="open" data-id="${i.id}"><h3>${esc(i.title||'(無題)')}</h3><span class="tag">${esc(i.genre)}</span><span class="tag">${esc(i.voice)}</span><span class="tag">${i.lines.length}行</span><div class="row" style="margin:8px 0 0"><button class="b" data-a="arc" data-id="${i.id}">${a?'↩ 戻す':'📦 アーカイブ'}</button><button class="b" data-a="deli" data-id="${i.id}">🗑</button></div></div>`).join('')||'<div style="color:var(--mu)">まだありません</div>'}</div>`}
+const NT={d:'YouTube説明欄テンプレ',x:'Xネタ',m:'メモ'};
+function mainNt(){const k=S.ui.nt||'d';
+return`<div class="row">${Object.keys(NT).map(x=>`<button class="tab ${x===k?'on':''}" data-a="nt" data-v="${x}">${NT[x]}</button>`).join('')}<button class="b p" data-a="addn">＋ 追加</button></div>
+<div class="grid">${S.notes[k].map(n=>`<div class="c"><input data-b="notes|${n.id}|t" value="${esc(n.t)}" style="font-weight:700;margin-bottom:6px"><textarea rows="8" style="resize:both" data-b="notes|${n.id}|b">${esc(n.b)}</textarea><div class="row" style="margin:6px 0 0"><button class="b" data-a="cpn" data-id="${n.id}">コピー</button><button class="b" data-a="deln" data-id="${n.id}">🗑</button></div></div>`).join('')}</div>`}
+function renderMain(){const t=S.ui.tab;document.querySelectorAll('header .tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t));$('#main').innerHTML=t==='an'?mainAn():t==='id'?mainId():mainNt();
+document.querySelectorAll('[data-b="root|subs"]').forEach(e=>e.value=S.subs);document.querySelectorAll('[data-b="root|goal"]').forEach(e=>e.value=S.goal)}
+function renderPanel(){const i=cur(),p=$('#panel');if(!i){p.classList.remove('open');return}
+p.classList.add('open');if(S.ui.pw)p.style.setProperty('--pw',S.ui.pw+'px');
+const pt=S.ui.pt;
+$('#ph').innerHTML=`<input data-b="ideas|${i.id}|title" value="${esc(i.title)}" placeholder="題名" style="font-weight:700"><button class="tab ${pt==='s'?'on':''}" data-a="pt" data-v="s">台本</button><button class="tab ${pt==='o'?'on':''}" data-a="pt" data-v="o">概要</button><button class="tab ${pt==='e'?'on':''}" data-a="pt" data-v="e">書き出し</button><button class="b" data-a="close">✕</button>`;
+let h='';
+if(pt==='o')h=`<div class="two"><label>ジャンル<input data-b="ideas|${i.id}|genre" value="${esc(i.genre)}"></label><label>音声<input data-b="ideas|${i.id}|voice" value="${esc(i.voice)}"></label></div><p><label>構成(目安時間)<textarea rows="6" data-b="ideas|${i.id}|kosei">${esc(i.kosei)}</textarea></label></p><p><label>ToDo<textarea rows="4" data-b="ideas|${i.id}|todo">${esc(i.todo)}</textarea></label></p><p><label>概要<textarea rows="6" data-b="ideas|${i.id}|gaiyo">${esc(i.gaiyo)}</textarea></label></p>`;
+else if(pt==='e')h=`<div class="row"><select id="ef" style="width:auto"><option value="k">話者「セリフ」</option><option value="t">話者[タブ]セリフ</option><option value="c">話者,セリフ</option></select>行 <input id="ea" type="number" min="1" value="1" style="width:70px">〜<input id="eb" type="number" min="1" value="${i.lines.length||1}" style="width:70px"><label><input id="efx" type="checkbox" style="width:auto"> 効果行も含める</label><button class="b p" data-a="cpe">コピー</button><button class="b" data-a="dle">.txt保存</button></div><textarea id="eo" rows="18" readonly></textarea><p style="color:var(--mu);font-size:12px">開始行〜終了行を指定して、ゆっくりムービーメーカーの台本欄に貼り付けられます。</p>`;
+else h=`<div class="row"><button class="b p" data-a="addl">＋ 行を追加</button><datalist id="sps">${[...new Set(['霊夢','魔理沙','ひまり','効果',...i.lines.map(l=>l.sp)])].map(x=>`<option value="${esc(x)}">`).join('')}</datalist></div><div class="wrap"><table style="width:${tw('ln')}px">${cols('ln')}<thead><tr>${['#','話者','コメント','備考','エフェクト','画像','BGM','操作'].map((x,n)=>th('ln',n,x)).join('')}</tr></thead><tbody>${i.lines.map((l,n)=>`<tr data-id="${l.id}"><td class="drag" draggable="true">⠿<br>${n+1}</td><td><input list="sps" class="sp" data-b="lines|${l.id}|sp" value="${esc(l.sp)}"></td><td><textarea rows="2" data-b="lines|${l.id}|text">${esc(l.text)}</textarea></td>${['note','fx','img','bgm'].map(k=>`<td><textarea rows="2" data-b="lines|${l.id}|${k}">${esc(l[k])}</textarea></td>`).join('')}<td><button class="b" data-a="up" data-id="${l.id}">↑</button><button class="b" data-a="dn" data-id="${l.id}">↓</button><button class="b" data-a="dell" data-id="${l.id}">🗑</button></td></tr>`).join('')}</tbody></table></div>`;
+$('#pb').innerHTML=h;if(pt==='e')expo()}
+function expo(){const i=cur(),f=$('#ef').value,a=+$('#ea').value||1,b=+$('#eb').value||1e9,fx=$('#efx').checked;
+const r=i.lines.map((l,n)=>[l,n+1]).filter(([l,n])=>n>=a&&n<=b&&(fx||l.sp!=='効果')).map(([l])=>f==='k'?`${l.sp}「${l.text}」`:f==='t'?`${l.sp}\t${l.text}`:`${l.sp},${l.text}`).join('\n');$('#eo').value=r;return r}
+function setB(e){const[c,id,f]=e.dataset.b.split('|');let v=e.type==='checkbox'?e.checked:e.type==='number'?+e.value:e.value;
+if(c==='root')S[id]=v;else if(c==='lines'){const l=cur().lines.find(x=>x.id===id);l[f]=v}else if(c==='notes'){const n=S.notes[S.ui.nt||'d'].find(x=>x.id===id);n[f]=v}else S[c].find(x=>x.id===id)[f]=v;save()}
+document.addEventListener('input',e=>{const t=e.target;if(t.dataset.b)setB(t);if(t.dataset.b==='root|subs'||t.dataset.b==='root|goal'){}
+if(['ef','ea','eb','efx'].includes(t.id))expo()});
+const mv=(arr,id,d)=>{const n=arr.findIndex(x=>x.id===id),m=n+d;if(m<0||m>=arr.length)return;arr.splice(m,0,arr.splice(n,1)[0])};
+document.addEventListener('click',async e=>{const t=e.target.closest('[data-a],[data-t]');if(!t)return;e.stopPropagation();
+if(t.dataset.t){S.ui.tab=t.dataset.t;S.ui.cur=null;S.ui.it='new';save();renderMain();renderPanel();scrollTo(0,0);return}
+const a=t.dataset.a,id=t.dataset.id,i=cur(),v=t.dataset.v;
+if(a==='addv')S.videos.push({id:uid(),title:'',genre:'',date:'',views:0,likes:0,mins:0,rev:0,monet:false});
+else if(a==='fetch'){fetchStats();return}
+else if(a==='delv'){if(!arm(t))return;S.videos=S.videos.filter(x=>x.id!==id)}
+else if(a==='it')S.ui.it=v;
+else if(a==='addi'){const n={id:uid(),title:'',genre:'',voice:'ゆっくり',arch:false,kosei:'',todo:'',gaiyo:'',lines:[]};S.ideas.unshift(n);S.ui.cur=n.id;S.ui.pt='s'}
+else if(a==='open'){S.ui.cur=id;S.ui.pt='s'}
+else if(a==='arc'){const x=S.ideas.find(x=>x.id===id);x.arch=!x.arch}
+else if(a==='deli'){if(!arm(t))return;S.ideas=S.ideas.filter(x=>x.id!==id)}
+else if(a==='nt')S.ui.nt=v;
+else if(a==='addn')S.notes[S.ui.nt||'d'].push({id:uid(),t:'新規',b:''});
+else if(a==='deln'){S.notes[S.ui.nt||'d']=S.notes[S.ui.nt||'d'].filter(x=>x.id!==id)}
+else if(a==='cpn'){try{await navigator.clipboard.writeText(S.notes[S.ui.nt||'d'].find(x=>x.id===id).b);t.textContent='✓'}catch(_){}return}
+else if(a==='close')S.ui.cur=null;
+else if(a==='pt')S.ui.pt=v;
+else if(a==='addl'){i.lines.push({id:uid(),sp:(i.lines.at(-1)||{}).sp||'霊夢',text:'',note:'',fx:'',img:'',bgm:''})}
+else if(a==='dell')i.lines=i.lines.filter(x=>x.id!==id);
+else if(a==='up')mv(i.lines,id,-1);else if(a==='dn')mv(i.lines,id,1);
+else if(a==='cpe'){try{await navigator.clipboard.writeText(expo());t.textContent='✓ コピー済'}catch(_){$('#eo').select()}return}
+else if(a==='dle'){const u=URL.createObjectURL(new Blob([expo()],{type:'text/plain'})),l=document.createElement('a');l.href=u;l.download=(i.title||'script')+'.txt';l.click();return}
+save();renderMain();renderPanel()});
+// 列幅・パネル幅のドラッグ調整
+let drag=null;document.addEventListener('pointerdown',e=>{const r=e.target.closest('.rz');if(r){const k=r.dataset.k,n=+r.dataset.i;drag={k,n,x:e.clientX,w:S.ui.w[k][n],tb:r.closest('table')};e.preventDefault()}else if(e.target.id==='split'){drag={sp:1};e.preventDefault()}});
+document.addEventListener('pointermove',e=>{if(!drag)return;if(drag.sp){S.ui.pw=Math.max(320,Math.min(innerWidth-40,innerWidth-e.clientX));$('#panel').style.setProperty('--pw',S.ui.pw+'px');return}
+S.ui.w[drag.k][drag.n]=Math.max(40,drag.w+e.clientX-drag.x);drag.tb.querySelectorAll('col')[drag.n].style.width=S.ui.w[drag.k][drag.n]+'px';drag.tb.style.width=tw(drag.k)+'px'});
+document.addEventListener('pointerup',()=>{if(drag){drag=null;save()}});
+// ドラッグ並び替え
+let dr=null;document.addEventListener('dragstart',e=>{const r=e.target.closest('tr[data-id]');if(r){dr=r.dataset.id;try{e.dataTransfer.setData('text/plain','x')}catch(_){}}});
+document.addEventListener('dragover',e=>{const r=e.target.closest('tr[data-id]');if(r&&dr){e.preventDefault();document.querySelectorAll('tr.over').forEach(x=>x.classList.remove('over'));r.classList.add('over')}});
+document.addEventListener('drop',e=>{const r=e.target.closest('tr[data-id]');if(!r||!dr)return;e.preventDefault();const L=cur().lines,f=L.findIndex(x=>x.id===dr),t=L.findIndex(x=>x.id===r.dataset.id);L.splice(t,0,L.splice(f,1)[0]);dr=null;save();renderPanel()});
+document.addEventListener('dragend',()=>{dr=null;document.querySelectorAll('tr.over').forEach(x=>x.classList.remove('over'))});
+let armed=null;function arm(t){const k=t.dataset.a+t.dataset.id;if(armed===k){armed=null;return true}armed=k;t.textContent='本当に削除?';t.style.cssText='background:var(--ac);color:#fff';setTimeout(()=>{if(armed===k){armed=null;t.textContent='🗑';t.style.cssText=''}},3000);return false}
+function vid(u){u=String(u||'').trim();const m=u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/|video\/)([\w-]{11})/)||u.match(/^([\w-]{11})$/);return m?m[1]:''}
+async function fetchStats(){const ids=[...new Set(S.videos.map(v=>vid(v.url)).filter(Boolean))].slice(0,50);const st=()=>$('#st');if(!S.key||!ids.length){st().textContent='APIキーと動画URL/IDを入力してください';return}st().textContent='取得中…';try{const r=await fetch('https://www.googleapis.com/youtube/v3/videos?part=statistics&id='+ids.join(',')+'&key='+encodeURIComponent(S.key));const j=await r.json();if(j.error)throw new Error(j.error.message);j.items.forEach(it=>S.videos.filter(v=>vid(v.url)===it.id).forEach(v=>{v.views=+it.statistics.viewCount||0;v.likes=+it.statistics.likeCount||0}));save();renderMain();st().textContent=j.items.length+'本取得しました'}catch(e){st().textContent='取得できません: '+e.message+'(この公開ページでは外部通信がブロックされます。GitHub Pages版で実行してください)'}}
+function parseCSV(t){const R=[];let r=[],c='',q=false;t=t.replace(/^\uFEFF/,'');for(let i=0;i<t.length;i++){const ch=t[i];if(q){if(ch==='"'){if(t[i+1]==='"'){c+='"';i++}else q=false}else c+=ch}else if(ch==='"')q=true;else if(ch===','){r.push(c);c=''}else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&t[i+1]==='\n')i++;r.push(c);c='';R.push(r);r=[]}else c+=ch}if(c||r.length){r.push(c);R.push(r)}return R}
+document.addEventListener('change',async e=>{if(e.target.id!=='csv'||!e.target.files[0])return;const R=parseCSV(await e.target.files[0].text()),h=R[0]||[],ix=re=>h.findIndex(x=>re.test(x));const I={id:ix(/^(コンテンツ|動画|content|video)$/i),t:ix(/タイトル|title/i),v:ix(/視聴回数|views/i),l:ix(/高評価|likes/i),w:ix(/総再生時間|watch time/i),r:ix(/推定収益|estimated.*revenue/i)};let n=0;R.slice(1).forEach(row=>{const id=I.id>=0?(row[I.id]||''):'',t=I.t>=0?(row[I.t]||''):'';if(!id&&!t||/^(合計|total)/i.test(id||t))return;let v=S.videos.find(x=>(id&&vid(x.url)===id)||(t&&x.title===t));if(!v){v={id:uid(),title:t||id,genre:'',url:id,date:'',views:0,likes:0,mins:0,rev:0,monet:false};S.videos.push(v)}if(I.v>=0)v.views=+row[I.v]||0;if(I.l>=0)v.likes=+row[I.l]||0;if(I.w>=0)v.mins=Math.round((+row[I.w]||0)*60);if(I.r>=0){v.rev=Math.round(+row[I.r]||0);if(v.rev>0)v.monet=true}n++});save();renderMain();$('#st').textContent=n+'行を取り込みました'});
+renderMain();renderPanel();
+</script></body></html>
