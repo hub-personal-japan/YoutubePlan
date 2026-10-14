@@ -115,11 +115,16 @@ const isoDur=s=>{const m=String(s||'').match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)
 async function apiGet(path){if(!S.key)throw new Error('APIキーが未設定です(設定タブで入力してください)');const r=await fetch('https://www.googleapis.com/youtube/v3/'+path+'&key='+encodeURIComponent(S.key)),j=await r.json();if(j.error)throw new Error(j.error.message);return j}
 const apiVideos=async ids=>(await apiGet('videos?part=snippet,statistics,contentDetails&id='+ids.join(','))).items||[];
 function applyItem(v,it){if(!v.title)v.title=it.snippet.title;v.date=(it.snippet.publishedAt||'').slice(0,10)||v.date;v.views=it.statistics.viewCount!==undefined?+it.statistics.viewCount:'';v.likes=it.statistics.likeCount!==undefined?+it.statistics.likeCount:'';v.dur=isoDur(it.contentDetails&&it.contentDetails.duration)||v.dur;v.src='api';v.err=''}
-async function refresh(vs){const ids=[...new Set(vs.map(v=>vid(v.url)).filter(Boolean))].slice(0,50);if(!ids.length){setSt('動画URL/IDが入力されている動画がありません');return}setSt('取得中...');
-try{const items=await apiVideos(ids);vs.forEach(v=>{const id=vid(v.url);if(!id)return;const it=items.find(x=>x.id===id);if(it)applyItem(v,it);else{v.err='動画が見つかりません';v.src=''}});save();render();setSt(items.length+'件取得しました')}catch(e){setSt(errmsg(e))}}
+let lastF=0;
+const hm=()=>{const d=new Date();return d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')};
+function softRender(){if(UI.tab!=='an')return;const hg=$('.hero-grid'),ae=document.activeElement;if(hg)hg.outerHTML=heroH();if(ae&&ae.closest&&ae.closest('#tb'))refreshSum();else refreshRows()}
+let busy=false;
+async function refresh(vs,auto){if(busy)return;const ids=[...new Set(vs.map(v=>vid(v.url)).filter(Boolean))];if(!ids.length){if(!auto)setSt('動画URL/IDが入力されている動画がありません');return}busy=true;setSt(auto?'最新データを取得中...':'取得中...');
+try{const items=[];for(let i=0;i<ids.length;i+=50)items.push(...await apiVideos(ids.slice(i,i+50)));vs.forEach(v=>{const id=vid(v.url);if(!id)return;const it=items.find(x=>x.id===id);if(it)applyItem(v,it);else{v.err='動画が見つかりません';v.src=''}});save();if(auto)softRender();else render();setSt(items.length+'件取得しました(最終更新 '+hm()+')')}catch(e){setSt(errmsg(e))}finally{busy=false}}
 async function addLink(){const u=($('#lnk').value||'').trim(),id=vid(u);if(!id){setSt('動画のリンクを認識できません。YouTubeの動画URLまたは11文字の動画IDを入力してください');return}setSt('取得中...');
 try{const items=await apiVideos([id]);if(!items.length){setSt('動画が見つかりません');return}let v=S.videos.find(x=>vid(x.url)===id);if(!v){v=nvid({url:u});S.videos.push(v)}applyItem(v,items[0]);save();render();setSt('取得しました: '+v.title)}catch(e){setSt(errmsg(e))}}
-async function fetchSubs(){if(!S.chId){setSt('チャンネルIDを入力してください');return}setSt('取得中...');try{const j=await apiGet('channels?part=statistics&id='+encodeURIComponent(S.chId));if(!j.items||!j.items.length)throw new Error('チャンネルが見つかりません');const st=j.items[0].statistics;if(st.hiddenSubscriberCount)throw new Error('登録者数が非公開です');S.subs=+st.subscriberCount;save();render();setSt('登録者数を取得しました')}catch(e){setSt(errmsg(e))}}
+async function fetchSubs(auto){if(!S.chId){if(!auto)setSt('チャンネルIDを入力してください');return}if(!auto)setSt('取得中...');try{const j=await apiGet('channels?part=statistics&id='+encodeURIComponent(S.chId));if(!j.items||!j.items.length)throw new Error('チャンネルが見つかりません');const st=j.items[0].statistics;if(st.hiddenSubscriberCount)throw new Error('登録者数が非公開です');S.subs=+st.subscriberCount;save();if(auto)softRender();else{render();setSt('登録者数を取得しました')}}catch(e){if(!auto)setSt(errmsg(e))}}
+function autoRefresh(){if(!S.key||busy)return;const n=Date.now();if(n-lastF<30000)return;lastF=n;refresh(S.videos,true);if(S.chId)fetchSubs(true)}
 /* ---------- 動画作成案 ---------- */
 const lineH=(l,n)=>`<div class="ln"><div class="no">${n+1}</div><select data-b="lines|${l.id}|sp">${S.sp.some(s=>s.id===l.sp)?'':`<option value="${l.sp}" selected>(未設定)</option>`}${S.sp.map(s=>`<option value="${s.id}"${s.id===l.sp?' selected':''}>${esc(s.name)}</option>`).join('')}</select><textarea rows="1" data-grow data-l="${l.id}" data-b="lines|${l.id}|text" placeholder="内容">${esc(l.text)}</textarea><div class="ac"><button class="b sm" data-a="cp" data-c="lines" data-id="${l.id}">コピー</button><button class="b sm" data-a="dtl" data-id="${l.id}">詳細</button>${mvb('lines',l.id)}</div>${l.open?`<div class="dt">${[['note','備考'],['fx','エフェクト'],['img','画像'],['bgm','BGM']].map(([k,n])=>`<input placeholder="${n}" data-b="lines|${l.id}|${k}" value="${esc(l[k])}">`).join('')}</div>`:''}</div>`;
 const csvq=c=>/[",\n\r]/.test(c)?'"'+c.replace(/"/g,'""')+'"':c;
@@ -161,15 +166,15 @@ function addTodo(c){const q=c==='todos'?'#tdnew':'#itnew',i=$(q);if(!i||!i.value
 function addSp(){const i=$('#spnew');if(!i||!i.value.trim())return;S.sp.push({id:uid(),name:i.value.trim(),fx:false});save();render();$('#spnew').focus()}
 function addTy(){const i=$('#tpnew');if(!i||!i.value.trim())return;S.types.push({id:uid(),name:i.value.trim()});save();render();$('#tpnew').focus()}
 document.addEventListener('click',async e=>{const t=e.target.closest('[data-a],[data-t]');if(!t||e.target.closest('.rz'))return;
-if(t.dataset.t){UI.tab=t.dataset.t;UI.sel=null;UI.it='new';render(false);scrollTo(0,0);return}
+if(t.dataset.t){UI.tab=t.dataset.t;UI.sel=null;UI.it='new';render(false);scrollTo(0,0);if(UI.tab==='an')autoRefresh();return}
 const a=t.dataset.a,id=t.dataset.id,v=t.dataset.v,c=t.dataset.c;
 switch(a){
 case'addv':S.videos.push(nvid());break;
 case'addlink':addLink();return;
-case'fetch':refresh(S.videos);return;
+case'fetch':lastF=Date.now();refresh(S.videos);if(S.chId)fetchSubs(true);return;
 case'fone':refresh([S.videos.find(x=>x.id===id)]);return;
 case'clr':{const o=S.videos.find(x=>x.id===id);Object.assign(o,{views:'',likes:'',dur:'',mins:'',rev:'',monet:false,src:'',err:''})}break;
-case'fsubs':fetchSubs();return;
+case'fsubs':fetchSubs(false);return;
 case'undoh':undo1();return;
 case'redoh':redo1();return;
 case'sort':if(UI.sk===v)UI.sd*=-1;else{UI.sk=v;UI.sd=v==='title'?1:-1}break;
@@ -216,5 +221,6 @@ function redo1(){if(!H.r.length){toast('これ以上進めません');return}H.u
 function applyH(m){H.g=null;const ae=document.activeElement,k=ae&&ae.dataset&&(ae.dataset.l?`textarea[data-l="${ae.dataset.l}"]`:ae.dataset.b?`[data-b="${ae.dataset.b}"]`:ae.id?'#'+ae.id:null),p=ae&&ae.selectionStart;S.ideas=JSON.parse(H.last);if(UI.sel&&!S.ideas.some(x=>x.id===UI.sel))UI.sel=null;persist();render();toast(m);if(k){const n=$(k);if(n){n.focus();try{n.setSelectionRange(p,p)}catch(_){}}}}
 document.addEventListener('keydown',e=>{if(UI.tab!=='id'||e.isComposing||!(e.ctrlKey||e.metaKey)||e.altKey)return;const k=e.key.toLowerCase();if(k==='z'&&!e.shiftKey){e.preventDefault();undo1()}else if(k==='y'||(k==='z'&&e.shiftKey)){e.preventDefault();redo1()}});
 window.addEventListener('error',e=>{const b=$('#err');b.textContent='エラー: '+e.message;b.style.display='block'});
-render(false);
+render(false);autoRefresh();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&UI.tab==='an')autoRefresh()});
 </script></body></html>
