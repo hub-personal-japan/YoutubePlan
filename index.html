@@ -101,7 +101,7 @@ function hist(g){S.ideas.forEach(i=>{H.swc[i.id]=i.sw});const cur=hs();if(H.last
 const save=g=>{persist();hist(g)};
 const spOf=id=>S.sp.find(s=>s.id===id)||{name:'(未設定)',fx:false};
 const list=c=>c==='lines'||c==='itodos'?(S.ideas.find(x=>x.id===UI.sel)||{lines:[],todos:[]})[c==='lines'?'lines':'todos']:c==='notes'?S.notes[UI.nt]:S[c];
-const grow=t=>{t.style.height='auto';t.style.height=(t.scrollHeight+2)+'px'};
+const grow=t=>{const es=[];for(let e=t.parentElement;e;e=e.parentElement)if(e.scrollTop)es.push([e,e.scrollTop]);const wy=window.scrollY;t.style.height='auto';t.style.height=(t.scrollHeight+2)+'px';for(const[e,y]of es)if(e.scrollTop!==y)e.scrollTop=y;if(window.scrollY!==wy)window.scrollTo(0,wy)};
 const mvb=(c,id)=>`<button class="b sm d" data-a="del" data-c="${c}" data-id="${id}">削除</button>`;
 function vid(u){u=String(u||'').trim();const m=u.match(/(?:v=|youtu\.be\/|shorts\/|embed\/|video\/)([\w-]{11})/)||u.match(/^([\w-]{11})$/);return m?m[1]:''}
 function cw(k,d){if(!S.w[k]||S.w[k].length!==d.length)S.w[k]=d.slice()}
