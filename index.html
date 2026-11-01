@@ -172,7 +172,7 @@ const scHead=()=>`<div class="ln lnh"><div>No<i class="rz" data-k="sc" data-i="0
 const noteOpts=()=>Object.keys(NT).map(k=>((S.notes||{})[k]||[]).map(n=>`<option value="${k}|${n.id}">${NT[k]}: ${esc(n.t||'(無題)')}</option>`).join('')).join('');
 const tplRow=f=>`<div class="row" style="margin:4px 0"><select id="tpl-${f}" style="flex:1;min-width:220px"><option value="">(テンプレ・メモから選ぶ)</option>${noteOpts()}</select><button class="b sm" data-a="tplins" data-f="${f}">末尾に挿入</button><button class="b sm" data-a="tplrep" data-f="${f}">置き換え</button></div>`;
 function edHtml(i){const t=UI.et,T=(k,l)=>`<button class="tab ${t===k?'on':''}" data-a="et" data-v="${k}">${l}</button>`;let b='';
-if(t==='s')b=`<div class="row"><button class="b p" data-a="addl">行を追加</button><button class="b sm" data-a="scrw">列の幅をリセット</button><span class="mu">Enter: 次の行 / Shift+Enter: 改行 ・ 列の幅は見出しの右端をドラッグで変更できます</span></div><div class="lw" style="${scVars()}">${scHead()}${i.lines.map(lineH).join('')||'<div class="mu">行がありません。「行を追加」を押してください</div>'}</div>`;
+if(t==='s')b=`<div class="row"><button class="b p" data-a="addl">行を追加</button><button class="b sm" data-a="scrw">列の幅をリセット</button><span class="mu">Enter: 次の行 / Shift+Enter: 改行 / ↑↓: 行の移動(先頭行で↑・最終行で↓) ・ 列の幅は見出しの右端をドラッグで変更できます</span></div><div class="lw" style="${scVars()}">${scHead()}${i.lines.map(lineH).join('')||'<div class="mu">行がありません。「行を追加」を押してください</div>'}</div>`;
 else if(t==='o')b=`<div class="row"><label style="white-space:nowrap;flex:none">投稿予定<input type="date" style="width:170px" data-b="ideas|${i.id}|date" value="${esc(i.date)}"></label></div><p>構成${tplRow('kosei')}<textarea rows="5" data-grow data-b="ideas|${i.id}|kosei">${esc(i.kosei)}</textarea></p><p>概要${tplRow('gaiyo')}<textarea rows="5" data-grow data-b="ideas|${i.id}|gaiyo">${esc(i.gaiyo)}</textarea></p>`;
 else if(t==='t')b=todoH('itodos','itnew',i.todos);
 else b=exportH(i);
@@ -208,6 +208,7 @@ async function copy(txt,btn){try{await navigator.clipboard.writeText(txt)}catch(
 const newLine=sp=>({id:uid(),sp,text:'',note:'',fx:'',img:'',bgm:'',open:false});
 function focusLine(id){requestAnimationFrame(()=>{const t=$(`textarea[data-l="${id}"]`);if(t){t.focus();t.setSelectionRange(t.value.length,t.value.length)}})}
 function nextLine(id){const L=list('lines'),n=L.findIndex(x=>x.id===id);if(n<L.length-1){focusLine(L[n+1].id);return}const l=newLine(L[n].sp);L.push(l);save();render();focusLine(l.id)}
+function focusLinePos(id,pos){requestAnimationFrame(()=>{const t=$(`textarea[data-l="${id}"]`);if(t){t.focus();const p=Math.max(0,Math.min(pos,t.value.length));try{t.setSelectionRange(p,p)}catch(_){}}})}
 function addTodo(c){const q=c==='todos'?'#tdnew':'#itnew',i=$(q);if(!i||!i.value.trim())return;list(c).push({id:uid(),t:i.value.trim(),done:false});save();render();$(q).focus()}
 function addSp(){const i=$('#spnew');if(!i||!i.value.trim())return;S.sp.push({id:uid(),name:i.value.trim(),fx:false});save();render();$('#spnew').focus()}
 function addGrp(){const i=$('#gnew');if(!i||!i.value.trim())return;S.groups.push({id:uid(),name:i.value.trim(),fold:false});save();render();$('#gnew').focus()}
@@ -267,6 +268,10 @@ if(c==='ideas'&&(f==='title'||f==='type')){const r=$(`.ir[data-id="${id}"]`);if(
 if(t.dataset.r)render()}
 document.addEventListener('input',e=>{const t=e.target;if(t.id==='ifind'){UI.if=t.value;applyIf();return}if(t.dataset.f!==undefined){UI.f[t.dataset.f]=t.value;refreshRows();return}if(t.dataset.b){setB(t);if('grow'in t.dataset)grow(t)}
 if(['exsp','exfx','exa','exb'].includes(t.id)){const o=UI.ex;o.sp=$('#exsp').checked;o.fx=$('#exfx').checked;o.a=nv($('#exa').value)||1;o.b=nv($('#exb').value);$('#exo').value=csv(S.ideas.find(x=>x.id===UI.sel))}});
+document.addEventListener('keydown',e=>{const t=e.target;if(!t.dataset||!t.dataset.l||e.isComposing||e.keyCode===229||e.shiftKey||e.ctrlKey||e.metaKey||e.altKey)return;if(e.key!=='ArrowUp'&&e.key!=='ArrowDown')return;if(t.selectionStart!==t.selectionEnd)return;
+const L=list('lines'),n=L.findIndex(x=>x.id===t.dataset.l);if(n<0)return;const v=t.value,pos=t.selectionStart,ls=v.lastIndexOf('\n',pos-1)+1,col=pos-ls,line=v.slice(0,pos).split('\n').length-1,last=v.split('\n').length-1;
+if(e.key==='ArrowUp'){if(line>0||n===0)return;e.preventDefault();const tv=L[n-1],tt=tv.text||'',tle=tt.lastIndexOf('\n')+1;focusLinePos(tv.id,tle+Math.min(col,tt.length-tle))}
+else{if(line<last||n>=L.length-1)return;e.preventDefault();const tv=L[n+1],tt=tv.text||'',nl=tt.indexOf('\n'),fe=nl<0?tt.length:nl;focusLinePos(tv.id,Math.min(col,fe))}});
 document.addEventListener('keydown',e=>{const t=e.target,ok=e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&e.keyCode!==229;if(!ok)return;
 if(t.dataset&&t.dataset.l){e.preventDefault();nextLine(t.dataset.l)}else if(t.id==='tdnew'){e.preventDefault();addTodo('todos')}else if(t.id==='itnew'){e.preventDefault();addTodo('itodos')}else if(t.id==='spnew'){e.preventDefault();addSp()}else if(t.id==='tpnew'){e.preventDefault();addTy()}else if(t.id==='gnew'){e.preventDefault();addGrp()}else if(t.id==='lnk'){e.preventDefault();addLink()}});
 let drag=null;document.addEventListener('pointerdown',e=>{const r=e.target.closest&&e.target.closest('.rz');if(r){if(r.dataset.k==='sc'){drag={sc:1,n:+r.dataset.i,x:e.clientX,w:(S.scw||[48,96,110,110,146])[+r.dataset.i]};e.preventDefault();return}const k=r.dataset.k,n=+r.dataset.i;drag={k,n,x:e.clientX,w:S.w[k][n],tb:r.closest('table')};e.preventDefault()}else if(e.target.id==='split'){drag={sp:1};e.preventDefault()}});
